@@ -59,13 +59,16 @@ const formSchema = z.object({
   slots: z.number().min(1, "Number of slots must be at least 1"),
 });
 
+// Define type for the form schema
+type FormValues = z.infer<typeof formSchema>;
+
 const PostInternship = () => {
   const navigate = useNavigate();
   const { addInternship } = useData();
   const { toast } = useToast();
   
   // Initialize form with react-hook-form
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
@@ -99,7 +102,7 @@ const PostInternship = () => {
     useFieldArray({ control: form.control, name: "skills" });
   
   // Handle form submission
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = (values: FormValues) => {
     // Generate a new internship object
     const newInternship: Internship = {
       id: `intern-${Date.now()}`,
@@ -109,7 +112,11 @@ const PostInternship = () => {
       description: values.description,
       responsibilities: values.responsibilities,
       requirements: values.requirements,
-      location: values.location,
+      location: {
+        city: values.location.city,
+        state: values.location.state,
+        country: values.location.country
+      },
       stipend: values.stipend,
       durationMonths: values.durationMonths,
       postedDate: new Date().toISOString().split('T')[0],
