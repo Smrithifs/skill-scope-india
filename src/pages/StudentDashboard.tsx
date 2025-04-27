@@ -6,10 +6,16 @@ import InternshipCard from '@/components/InternshipCard';
 import InternshipSearch from '@/components/InternshipSearch';
 import InternshipFilter from '@/components/InternshipFilter';
 import { InternshipFilter as FilterType } from '@/types';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const StudentDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
   const { getFilteredInternships } = useData();
 
   // Parse URL query parameters
@@ -33,7 +39,7 @@ const StudentDashboard = () => {
   };
 
   // Handle filter changes
-  const handleFilterChange = (newFilter: FilterType) => {
+  const handleFilterChange = async (newFilter: FilterType) => {
     setFilter(newFilter);
     updateQueryParams(newFilter);
   };
@@ -50,6 +56,31 @@ const StudentDashboard = () => {
     if (newFilter.isRemote) params.append('isRemote', newFilter.isRemote.toString());
     
     navigate(`/student?${params.toString()}`);
+  };
+
+  // Function to fetch more internships from LinkedIn
+  const fetchMoreInternships = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('linkedin-scraper', {
+        body: { category: filter.category || '' }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "New internships loaded!",
+        description: `Found ${data.count} new internships.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -82,14 +113,20 @@ const StudentDashboard = () => {
                   {filter.query && ` matching "${filter.query}"`}
                   {filter.category && filter.category !== 'All' && ` in ${filter.category}`}
                 </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">Sort by:</span>
-                  <select className="text-sm border-none bg-transparent font-medium text-gray-700 focus:outline-none">
-                    <option value="recent">Most Recent</option>
-                    <option value="stipend">Highest Stipend</option>
-                    <option value="duration">Duration</option>
-                  </select>
-                </div>
+                <Button
+                  onClick={fetchMoreInternships}
+                  disabled={isLoading}
+                  className="ml-4"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    'Search for More'
+                  )}
+                </Button>
               </div>
             </div>
             
@@ -104,8 +141,11 @@ const StudentDashboard = () => {
               <div className="bg-white p-8 rounded-lg border border-gray-200 text-center">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">No internships found</h3>
                 <p className="text-gray-600 mb-4">
-                  Try adjusting your search filters or explore different categories.
+                  Try adjusting your search filters or click "Search for More" to find more opportunities.
                 </p>
+                <Button onClick={fetchMoreInternships} disabled={isLoading}>
+                  {isLoading ? 'Searching...' : 'Search for More Internships'}
+                </Button>
               </div>
             )}
           </div>

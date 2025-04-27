@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
@@ -38,7 +37,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import * as z from "zod";
 
-// Define form schema with zod
 const formSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
   company: z.string().min(2, "Company name is required"),
@@ -59,7 +57,6 @@ const formSchema = z.object({
   slots: z.number().min(1, "Number of slots must be at least 1"),
 });
 
-// Define type for the form schema
 type FormValues = z.infer<typeof formSchema>;
 
 const PostInternship = () => {
@@ -67,7 +64,6 @@ const PostInternship = () => {
   const { addInternship } = useData();
   const { toast } = useToast();
   
-  // Initialize form with react-hook-form
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -91,7 +87,6 @@ const PostInternship = () => {
     },
   });
   
-  // Use field arrays for dynamic lists
   const { fields: responsibilityFields, append: appendResponsibility, remove: removeResponsibility } = 
     useFieldArray({ control: form.control, name: "responsibilities" });
   
@@ -101,9 +96,7 @@ const PostInternship = () => {
   const { fields: skillFields, append: appendSkill, remove: removeSkill } = 
     useFieldArray({ control: form.control, name: "skills" });
   
-  // Handle form submission
   const onSubmit = (values: FormValues) => {
-    // Generate a new internship object
     const newInternship: Internship = {
       id: `intern-${Date.now()}`,
       title: values.title,
@@ -125,19 +118,16 @@ const PostInternship = () => {
       skills: values.skills,
       slots: values.slots,
       applicationsCount: 0,
-      recruiterId: '1', // Mock recruiter ID
+      recruiterId: '1',
     };
     
-    // Add the internship
     addInternship(newInternship);
     
-    // Show success message
     toast({
       title: "Internship Posted!",
       description: "Your internship has been successfully posted.",
     });
     
-    // Navigate to recruiter dashboard
     navigate('/recruiter');
   };
   

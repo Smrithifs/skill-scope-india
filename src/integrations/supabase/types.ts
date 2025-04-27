@@ -9,7 +9,234 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      applications: {
+        Row: {
+          application_date: string | null
+          cover_letter: string | null
+          created_at: string | null
+          id: string
+          internship_id: string
+          recruiter_id: string | null
+          resume_url: string | null
+          status: string
+          student_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          application_date?: string | null
+          cover_letter?: string | null
+          created_at?: string | null
+          id?: string
+          internship_id: string
+          recruiter_id?: string | null
+          resume_url?: string | null
+          status?: string
+          student_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          application_date?: string | null
+          cover_letter?: string | null
+          created_at?: string | null
+          id?: string
+          internship_id?: string
+          recruiter_id?: string | null
+          resume_url?: string | null
+          status?: string
+          student_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_internship_id_fkey"
+            columns: ["internship_id"]
+            isOneToOne: false
+            referencedRelation: "internships"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_recruiter_id_fkey"
+            columns: ["recruiter_id"]
+            isOneToOne: false
+            referencedRelation: "recruiters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      internships: {
+        Row: {
+          applications_count: number | null
+          category: string
+          company: string
+          company_logo: string | null
+          created_at: string | null
+          deadline: string
+          description: string
+          duration_months: number
+          external_id: string | null
+          external_url: string | null
+          id: string
+          is_remote: boolean | null
+          location: Json
+          posted_date: string | null
+          recruiter_id: string | null
+          requirements: string[] | null
+          responsibilities: string[] | null
+          skills: string[] | null
+          slots: number | null
+          stipend: number | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          applications_count?: number | null
+          category: string
+          company: string
+          company_logo?: string | null
+          created_at?: string | null
+          deadline: string
+          description: string
+          duration_months: number
+          external_id?: string | null
+          external_url?: string | null
+          id?: string
+          is_remote?: boolean | null
+          location: Json
+          posted_date?: string | null
+          recruiter_id?: string | null
+          requirements?: string[] | null
+          responsibilities?: string[] | null
+          skills?: string[] | null
+          slots?: number | null
+          stipend?: number | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          applications_count?: number | null
+          category?: string
+          company?: string
+          company_logo?: string | null
+          created_at?: string | null
+          deadline?: string
+          description?: string
+          duration_months?: number
+          external_id?: string | null
+          external_url?: string | null
+          id?: string
+          is_remote?: boolean | null
+          location?: Json
+          posted_date?: string | null
+          recruiter_id?: string | null
+          requirements?: string[] | null
+          responsibilities?: string[] | null
+          skills?: string[] | null
+          slots?: number | null
+          stipend?: number | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internships_recruiter_id_fkey"
+            columns: ["recruiter_id"]
+            isOneToOne: false
+            referencedRelation: "recruiters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recruiters: {
+        Row: {
+          company: string
+          company_logo: string | null
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string | null
+          position: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          company: string
+          company_logo?: string | null
+          created_at?: string | null
+          email: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          position: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          company?: string
+          company_logo?: string | null
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          position?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      students: {
+        Row: {
+          college: string | null
+          created_at: string | null
+          degree: string | null
+          email: string
+          full_name: string
+          graduation_year: number | null
+          id: string
+          phone: string | null
+          resume_url: string | null
+          skills: string[] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          college?: string | null
+          created_at?: string | null
+          degree?: string | null
+          email: string
+          full_name: string
+          graduation_year?: number | null
+          id?: string
+          phone?: string | null
+          resume_url?: string | null
+          skills?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          college?: string | null
+          created_at?: string | null
+          degree?: string | null
+          email?: string
+          full_name?: string
+          graduation_year?: number | null
+          id?: string
+          phone?: string | null
+          resume_url?: string | null
+          skills?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
