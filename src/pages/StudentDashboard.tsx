@@ -1,15 +1,15 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
-import InternshipCard from '@/components/InternshipCard';
-import InternshipSearch from '@/components/InternshipSearch';
-import InternshipFilter from '@/components/InternshipFilter';
-import { InternshipFilter as FilterType } from '@/types';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+import { InternshipFilter as FilterType } from '@/types';
+import InternshipSearch from '@/components/InternshipSearch';
+import InternshipFilter from '@/components/InternshipFilter';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import SearchResultsSummary from '@/components/dashboard/SearchResultsSummary';
+import InternshipGrid from '@/components/dashboard/InternshipGrid';
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -39,7 +39,7 @@ const StudentDashboard = () => {
   };
 
   // Handle filter changes
-  const handleFilterChange = async (newFilter: FilterType) => {
+  const handleFilterChange = (newFilter: FilterType) => {
     setFilter(newFilter);
     updateQueryParams(newFilter);
   };
@@ -86,68 +86,31 @@ const StudentDashboard = () => {
   return (
     <div className="bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Find Internships</h1>
-          <p className="text-gray-600">Discover opportunities that match your skills and interests</p>
-        </div>
+        <DashboardHeader />
         
-        {/* Search */}
         <div className="mb-8">
           <InternshipSearch onSearch={handleSearch} initialQuery={filter.query} />
         </div>
         
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar filters */}
           <div className="lg:w-1/4">
             <InternshipFilter onFilterChange={handleFilterChange} currentFilter={filter} />
           </div>
           
-          {/* Internship listings */}
           <div className="lg:w-3/4">
-            {/* Results summary */}
-            <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
-              <div className="flex justify-between items-center">
-                <p className="text-gray-600">
-                  Found <span className="font-semibold">{internships.length}</span> internships
-                  {filter.query && ` matching "${filter.query}"`}
-                  {filter.category && filter.category !== 'All' && ` in ${filter.category}`}
-                </p>
-                <Button
-                  onClick={fetchMoreInternships}
-                  disabled={isLoading}
-                  className="ml-4"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    'Search for More'
-                  )}
-                </Button>
-              </div>
-            </div>
+            <SearchResultsSummary 
+              count={internships.length}
+              query={filter.query}
+              category={filter.category}
+              isLoading={isLoading}
+              onFetchMore={fetchMoreInternships}
+            />
             
-            {/* Internship cards */}
-            {internships.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {internships.map(internship => (
-                  <InternshipCard key={internship.id} internship={internship} />
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white p-8 rounded-lg border border-gray-200 text-center">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No internships found</h3>
-                <p className="text-gray-600 mb-4">
-                  Try adjusting your search filters or click "Search for More" to find more opportunities.
-                </p>
-                <Button onClick={fetchMoreInternships} disabled={isLoading}>
-                  {isLoading ? 'Searching...' : 'Search for More Internships'}
-                </Button>
-              </div>
-            )}
+            <InternshipGrid 
+              internships={internships}
+              isLoading={isLoading}
+              onFetchMore={fetchMoreInternships}
+            />
           </div>
         </div>
       </div>
