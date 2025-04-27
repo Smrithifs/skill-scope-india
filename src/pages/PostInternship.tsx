@@ -42,8 +42,8 @@ const formSchema = z.object({
   company: z.string().min(2, "Company name is required"),
   category: z.string().min(1, "Please select a category"),
   description: z.string().min(20, "Description must be at least 20 characters"),
-  responsibilities: z.array(z.string().min(5, "Each responsibility must be at least 5 characters")),
-  requirements: z.array(z.string().min(5, "Each requirement must be at least 5 characters")),
+  responsibilities: z.array(z.string().min(5, "Each responsibility must be at least 5 characters")).min(1),
+  requirements: z.array(z.string().min(5, "Each requirement must be at least 5 characters")).min(1),
   location: z.object({
     city: z.string().min(1, "City is required"),
     state: z.string().min(1, "State is required"),
@@ -53,7 +53,7 @@ const formSchema = z.object({
   durationMonths: z.number().min(1, "Duration must be at least 1 month"),
   deadline: z.string().min(1, "Deadline is required"),
   isRemote: z.boolean(),
-  skills: z.array(z.string().min(1, "Skill is required")),
+  skills: z.array(z.string().min(1, "Skill is required")).min(1),
   slots: z.number().min(1, "Number of slots must be at least 1"),
 });
 
