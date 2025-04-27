@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
@@ -11,10 +12,18 @@ interface InternshipSearchProps {
 
 const InternshipSearch = ({ onSearch, initialQuery = '' }: InternshipSearchProps) => {
   const [query, setQuery] = useState(initialQuery);
+  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Call the onSearch function passed as prop
     onSearch(query);
+    
+    // If we're on the home page, navigate to the student dashboard with the search query
+    if (window.location.pathname === '/') {
+      navigate(`/student?query=${encodeURIComponent(query)}`);
+    }
   };
 
   return (

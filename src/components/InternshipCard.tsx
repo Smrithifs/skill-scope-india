@@ -30,7 +30,11 @@ const InternshipCard = ({ internship }: InternshipCardProps) => {
   // Calculate days left until deadline
   const getDaysLeft = (deadline: string): number => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to beginning of day for accurate comparison
+    
     const deadlineDate = new Date(deadline);
+    deadlineDate.setHours(0, 0, 0, 0);
+    
     const differenceInTime = deadlineDate.getTime() - today.getTime();
     const differenceInDays = Math.ceil(differenceInTime / (1000 * 3600 * 24));
     return differenceInDays;
