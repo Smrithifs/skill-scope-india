@@ -82,7 +82,7 @@ const PostInternship = () => {
       durationMonths: 3,
       deadline: "",
       isRemote: false,
-      skills: [""],
+      skills: [skillsList[0] || ""],
       slots: 1,
     },
   });
@@ -466,7 +466,7 @@ const PostInternship = () => {
                             onValueChange={(value) => {
                               form.setValue(`skills.${index}`, value);
                             }}
-                            defaultValue={form.getValues(`skills.${index}`) || ""}
+                            defaultValue={skillsList[0]}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder={`Select skill ${index + 1}`} />
