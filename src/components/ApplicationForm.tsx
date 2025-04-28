@@ -26,7 +26,7 @@ interface ApplicationFormProps {
 export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFormProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, profile, userType } = useAuth();
+  const { user, profile, userType, isLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -192,7 +192,7 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
 
   // Redirect to auth if not logged in
   useEffect(() => {
-    if (isOpen && !isLoading && !user) {
+    if (isOpen && !user) {
       toast({
         title: "Authentication required",
         description: "Please sign in to apply for internships.",
@@ -200,7 +200,7 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
       onClose();
       navigate('/auth');
     }
-  }, [isOpen, user, navigate, onClose]);
+  }, [isOpen, user, isLoading, navigate, onClose, toast]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
