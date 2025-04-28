@@ -107,7 +107,9 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          throw new Error(error.message);
+        }
         studentId = data.id;
       } else {
         // Update student profile
@@ -122,7 +124,9 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
           })
           .eq('id', studentId);
 
-        if (error) throw error;
+        if (error) {
+          throw new Error(error.message);
+        }
       }
 
       // Upload resume if provided
@@ -135,7 +139,9 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
           .from('resumes')
           .upload(fileName, formData.resume);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
         resumeUrl = fileName;
       }
 
@@ -162,7 +168,9 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
           application_date: new Date().toISOString(),
         });
 
-      if (applicationError) throw applicationError;
+      if (applicationError) {
+        throw new Error(applicationError.message);
+      }
 
       // Update internship applications count
       const { error: updateError } = await supabase.rpc('increment_applications_count', {
