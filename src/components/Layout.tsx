@@ -1,13 +1,14 @@
 
 import { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { DataProvider } from '@/contexts/DataContext';
+import { useAuth } from '@/contexts/AuthContext';
 import Header from './Header';
 import Footer from './Footer';
-import { useData } from '@/contexts/DataContext';
 
 const Layout = () => {
-  // Use the useEffect hook to update the deadline dates when the component mounts
+  const navigate = useNavigate();
+  const { user, isLoading } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
   
   useEffect(() => {

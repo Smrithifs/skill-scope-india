@@ -1,16 +1,20 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 
 interface ApplicationFormProps {
@@ -20,15 +24,38 @@ interface ApplicationFormProps {
 }
 
 export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFormProps) {
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, profile, userType } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     degree: '',
     graduationYear: '',
+    college: '',
+    coverLetter: '',
     resume: null as File | null,
   });
+
+  // Prefill form with user data if available
+  useEffect(() => {
+    if (profile && userType === 'student') {
+      setFormData(prev => ({
+        ...prev,
+        fullName: profile.full_name || '',
+        email: profile.email || '',
+        degree: profile.degree || '',
+        graduationYear: profile.graduation_year ? String(profile.graduation_year) : '',
+        college: profile.college || '',
+      }));
+    }
+  }, [profile, userType]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -41,36 +68,69 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
     setIsSubmitting(true);
 
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
+      // Check if user is authenticated
+      if (!user) {
         toast({
           title: "Authentication required",
           description: "Please sign in to apply for internships.",
           variant: "destructive",
         });
+        onClose();
+        navigate('/auth');
         return;
       }
 
-      // Create or update student profile
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .upsert({
-          user_id: userData.user.id,
-          full_name: formData.fullName,
-          email: formData.email,
-          degree: formData.degree,
-          graduation_year: parseInt(formData.graduationYear),
-        })
-        .select()
-        .single();
+      // Check if user is a student
+      if (userType !== 'student') {
+        toast({
+          title: "Student account required",
+          description: "Only students can apply for internships.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      if (studentError) throw studentError;
+      let studentId = profile?.id;
+
+      // If student profile doesn't exist, create one
+      if (!studentId) {
+        const { data, error } = await supabase
+          .from('students')
+          .insert({
+            user_id: user.id,
+            full_name: formData.fullName,
+            email: formData.email,
+            degree: formData.degree,
+            graduation_year: formData.graduationYear ? parseInt(formData.graduationYear) : null,
+            college: formData.college,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        studentId = data.id;
+      } else {
+        // Update student profile
+        const { error } = await supabase
+          .from('students')
+          .update({
+            full_name: formData.fullName,
+            email: formData.email,
+            degree: formData.degree,
+            graduation_year: formData.graduationYear ? parseInt(formData.graduationYear) : null,
+            college: formData.college,
+          })
+          .eq('id', studentId);
+
+        if (error) throw error;
+      }
 
       // Upload resume if provided
       let resumeUrl = '';
       if (formData.resume) {
         const fileExt = formData.resume.name.split('.').pop();
-        const fileName = `${studentData.id}/${Date.now()}.${fileExt}`;
+        const fileName = `${studentId}/${Date.now()}.${fileExt}`;
+        
         const { error: uploadError } = await supabase.storage
           .from('resumes')
           .upload(fileName, formData.resume);
@@ -80,15 +140,38 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
       }
 
       // Create application
+      const { data: internship } = await supabase
+        .from('internships')
+        .select('recruiter_id')
+        .eq('id', internshipId)
+        .single();
+
+      if (!internship) {
+        throw new Error('Internship not found');
+      }
+
       const { error: applicationError } = await supabase
         .from('applications')
         .insert({
           internship_id: internshipId,
-          student_id: studentData.id,
+          student_id: studentId,
           resume_url: resumeUrl || null,
+          cover_letter: formData.coverLetter || null,
+          recruiter_id: internship.recruiter_id,
+          status: 'applied',
+          application_date: new Date().toISOString(),
         });
 
       if (applicationError) throw applicationError;
+
+      // Update internship applications count
+      const { error: updateError } = await supabase.rpc('increment_applications_count', {
+        internship_id: internshipId
+      });
+
+      if (updateError) {
+        console.error('Failed to update applications count:', updateError);
+      }
 
       toast({
         title: "Application submitted!",
@@ -107,9 +190,21 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
     }
   };
 
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (isOpen && !isLoading && !user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to apply for internships.",
+      });
+      onClose();
+      navigate('/auth');
+    }
+  }, [isOpen, user, navigate, onClose]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Apply for Internship</DialogTitle>
           <DialogDescription>
@@ -119,46 +214,72 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="fullName">Full Name</Label>
+            <Label htmlFor="fullName">Full Name*</Label>
             <Input
               id="fullName"
+              name="fullName"
               value={formData.fullName}
-              onChange={e => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
+              onChange={handleInputChange}
               required
             />
           </div>
           
           <div>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email*</Label>
             <Input
               id="email"
+              name="email"
               type="email"
               value={formData.email}
-              onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
+              onChange={handleInputChange}
               required
             />
           </div>
           
-          <div>
-            <Label htmlFor="degree">Degree</Label>
-            <Input
-              id="degree"
-              value={formData.degree}
-              onChange={e => setFormData(prev => ({ ...prev, degree: e.target.value }))}
-              required
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="college">College/University</Label>
+              <Input
+                id="college"
+                name="college"
+                value={formData.college}
+                onChange={handleInputChange}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="degree">Degree</Label>
+              <Input
+                id="degree"
+                name="degree"
+                value={formData.degree}
+                onChange={handleInputChange}
+              />
+            </div>
           </div>
           
           <div>
             <Label htmlFor="graduationYear">Graduation Year</Label>
             <Input
               id="graduationYear"
+              name="graduationYear"
               type="number"
-              min="2024"
+              min="2020"
               max="2030"
               value={formData.graduationYear}
-              onChange={e => setFormData(prev => ({ ...prev, graduationYear: e.target.value }))}
-              required
+              onChange={handleInputChange}
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="coverLetter">Cover Letter</Label>
+            <Textarea
+              id="coverLetter"
+              name="coverLetter"
+              value={formData.coverLetter}
+              onChange={handleInputChange}
+              placeholder="Why are you interested in this internship?"
+              className="h-24"
             />
           </div>
           
@@ -166,21 +287,25 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
             <Label htmlFor="resume">Resume</Label>
             <Input
               id="resume"
+              name="resume"
               type="file"
               accept=".pdf,.doc,.docx"
               onChange={handleFileChange}
-              required
+              className="cursor-pointer"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Upload your resume (PDF, DOC, or DOCX)
+            </p>
           </div>
           
-          <div className="flex justify-end gap-4">
+          <DialogFooter className="mt-6">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Submitting...' : 'Submit Application'}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

@@ -1,27 +1,12 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useData } from '@/contexts/DataContext';
-import { useToast } from "@/hooks/use-toast";
-import { 
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -31,442 +16,588 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Internship } from '@/types';
-import { internshipCategories, indianCities, indianStates, skillsList } from '@/data/mockData';
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
-import * as z from "zod";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { X, Plus } from "lucide-react";
+import { useData } from "@/contexts/DataContext";
 
+// Form schema validation with Zod
 const formSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
   company: z.string().min(2, "Company name is required"),
-  category: z.string().min(1, "Please select a category"),
+  companyLogo: z.any().optional(),
+  category: z.string().min(1, "Category is required"),
   description: z.string().min(20, "Description must be at least 20 characters"),
-  responsibilities: z.array(z.string().min(5, "Each responsibility must be at least 5 characters")).min(1),
-  requirements: z.array(z.string().min(5, "Each requirement must be at least 5 characters")).min(1),
-  location: z.object({
-    city: z.string().min(1, "City is required"),
-    state: z.string().min(1, "State is required"),
-    country: z.string().default("India"),
-  }),
-  stipend: z.number().min(0, "Stipend must be a positive number"),
-  durationMonths: z.number().min(1, "Duration must be at least 1 month"),
-  deadline: z.string().min(1, "Deadline is required"),
-  isRemote: z.boolean(),
-  skills: z.array(z.string().min(1, "Skill is required")).min(1),
-  slots: z.number().min(1, "Number of slots must be at least 1"),
+  responsibilities: z.array(
+    z.string().min(5, "Responsibility must be at least 5 characters")
+  ),
+  requirements: z.array(
+    z.string().min(5, "Requirement must be at least 5 characters")
+  ),
+  city: z.string().min(2, "City is required"),
+  state: z.string().min(2, "State is required"),
+  stipend: z.coerce
+    .number()
+    .positive("Stipend must be a positive number")
+    .optional(),
+  durationMonths: z.coerce
+    .number()
+    .int()
+    .positive("Duration must be a positive integer"),
+  deadline: z.string().min(1, "Application deadline is required"),
+  isRemote: z.boolean().default(false),
+  skills: z.array(z.string()),
+  slots: z.coerce.number().int().positive("Number of openings must be positive"),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+const categories = [
+  "Technology",
+  "Marketing",
+  "Finance",
+  "Human Resources",
+  "Design",
+  "Business",
+  "Data Science",
+  "Content",
+  "Operations",
+  "Research",
+  "Engineering",
+  "Product Management",
+];
+
+const skillsList = [
+  "JavaScript",
+  "React",
+  "Node.js",
+  "Python",
+  "Java",
+  "C++",
+  "HTML/CSS",
+  "SQL",
+  "Data Analysis",
+  "UI/UX Design",
+  "Digital Marketing",
+  "Content Writing",
+  "Graphic Design",
+  "Excel",
+  "Financial Analysis",
+  "Communication",
+  "Project Management",
+  "Machine Learning",
+  "Photoshop",
+  "iOS",
+  "Android",
+];
 
 const PostInternship = () => {
   const navigate = useNavigate();
-  const { addInternship } = useData();
   const { toast } = useToast();
-  
-  const form = useForm<FormValues>({
+  const { addInternship } = useData();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       company: "",
+      companyLogo: "",
       category: "",
       description: "",
       responsibilities: [""],
       requirements: [""],
-      location: {
-        city: "",
-        state: "",
-        country: "India",
-      },
+      city: "",
+      state: "",
       stipend: 0,
       durationMonths: 3,
       deadline: "",
       isRemote: false,
-      skills: [skillsList[0] || ""],
+      skills: [skillsList[0]],  // Initialize with the first item from skillsList
       slots: 1,
     },
   });
-  
-  const { fields: responsibilityFields, append: appendResponsibility, remove: removeResponsibility } = 
-    useFieldArray({ control: form.control, name: "responsibilities" });
-  
-  const { fields: requirementFields, append: appendRequirement, remove: removeRequirement } = 
-    useFieldArray({ control: form.control, name: "requirements" });
-  
-  const { fields: skillFields, append: appendSkill, remove: removeSkill } = 
-    useFieldArray({ control: form.control, name: "skills" });
-  
-  const onSubmit = (values: FormValues) => {
-    const newInternship: Internship = {
-      id: `intern-${Date.now()}`,
-      title: values.title,
-      company: values.company,
-      category: values.category,
-      description: values.description,
-      responsibilities: values.responsibilities,
-      requirements: values.requirements,
-      location: {
-        city: values.location.city,
-        state: values.location.state,
-        country: values.location.country
-      },
-      stipend: values.stipend,
-      durationMonths: values.durationMonths,
-      postedDate: new Date().toISOString().split('T')[0],
-      deadline: values.deadline,
-      isRemote: values.isRemote,
-      skills: values.skills,
-      slots: values.slots,
-      applicationsCount: 0,
-      recruiterId: '1',
-    };
-    
-    addInternship(newInternship);
-    
-    toast({
-      title: "Internship Posted!",
-      description: "Your internship has been successfully posted.",
-    });
-    
-    navigate('/recruiter');
+
+  const appendResponsibility = () => {
+    const responsibilities = form.getValues("responsibilities");
+    form.setValue("responsibilities", [...responsibilities, ""]);
   };
-  
+
+  const removeResponsibility = (index: number) => {
+    const responsibilities = form.getValues("responsibilities").filter(
+      (_, i) => i !== index
+    );
+    form.setValue("responsibilities", responsibilities);
+  };
+
+  const appendRequirement = () => {
+    const requirements = form.getValues("requirements");
+    form.setValue("requirements", [...requirements, ""]);
+  };
+
+  const removeRequirement = (index: number) => {
+    const requirements = form.getValues("requirements").filter(
+      (_, i) => i !== index
+    );
+    form.setValue("requirements", requirements);
+  };
+
+  const appendSkill = () => {
+    const skills = form.getValues("skills");
+    form.setValue("skills", [...skills, skillsList[0]]);  // Adding the first skill from skillsList
+  };
+
+  const removeSkill = (index: number) => {
+    const skills = form.getValues("skills").filter((_, i) => i !== index);
+    form.setValue("skills", skills);
+  };
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsSubmitting(true);
+    try {
+      // Try to get authenticated user session
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData.session) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in as a recruiter to post internships",
+          variant: "destructive",
+        });
+        navigate("/auth");
+        return;
+      }
+
+      // Check if user is a recruiter
+      const { data: recruiterData } = await supabase
+        .from("recruiters")
+        .select("id")
+        .eq("user_id", sessionData.session.user.id)
+        .single();
+
+      if (!recruiterData) {
+        toast({
+          title: "Permission denied",
+          description: "Only recruiters can post internships",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Prepare location object
+      const location = {
+        city: values.city,
+        state: values.state,
+        country: "India",
+      };
+
+      // Filter out empty strings from arrays
+      const responsibilities = values.responsibilities.filter(
+        (item) => item.trim() !== ""
+      );
+      const requirements = values.requirements.filter(
+        (item) => item.trim() !== ""
+      );
+      const skills = values.skills.filter((item) => item.trim() !== "");
+
+      // Format the deadline date string
+      const formattedDeadline = new Date(values.deadline).toISOString();
+
+      // Prepare internship data
+      const internshipData = {
+        title: values.title,
+        company: values.company,
+        company_logo: values.companyLogo,
+        category: values.category,
+        description: values.description,
+        responsibilities: responsibilities,
+        requirements: requirements,
+        location: location,
+        stipend: values.stipend,
+        duration_months: values.durationMonths,
+        deadline: formattedDeadline,
+        is_remote: values.isRemote,
+        skills: skills,
+        slots: values.slots,
+        recruiter_id: recruiterData.id,
+      };
+
+      // Insert internship into Supabase
+      const { error } = await supabase
+        .from("internships")
+        .insert(internshipData);
+
+      if (error) throw error;
+
+      toast({
+        title: "Internship posted successfully",
+        description: "Your internship has been published.",
+      });
+
+      navigate("/recruiter");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <div className="bg-gray-50 py-8">
-      <div className="container mx-auto px-4 max-w-3xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>Post a New Internship</CardTitle>
-            <CardDescription>
-              Create a new internship opportunity for students across India.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Basic Information</h3>
-                    
-                    <FormField
-                      control={form.control}
-                      name="title"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Internship Title*</FormLabel>
+    <div className="bg-gray-50 py-8 min-h-screen">
+      <div className="container mx-auto px-4">
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h1 className="text-2xl font-bold mb-6">Post a New Internship</h1>
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-8"
+            >
+              {/* Basic Information */}
+              <div className="bg-gray-50 p-4 rounded-md">
+                <h2 className="text-lg font-semibold mb-4">
+                  Basic Information
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Internship Title</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Frontend Developer Intern"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="company"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Company Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Your Company Name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
                           <FormControl>
-                            <Input placeholder="e.g. Frontend Developer Intern" {...field} />
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="company"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Company Name*</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Your company name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Category*</FormLabel>
-                            <Select 
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a category" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {internshipCategories.slice(1).map((category) => (
-                                  <SelectItem key={category} value={category}>
-                                    {category}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
+                          <SelectContent>
+                            {categories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="companyLogo"
+                    render={({ field: { value, onChange, ...field } }) => (
+                      <FormItem>
+                        <FormLabel>Company Logo URL (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="https://yourcompany.com/logo.png"
+                            {...field}
+                            value={value as string}
+                            onChange={(e) => onChange(e.target.value)}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Provide a URL to your company logo
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="bg-gray-50 p-4 rounded-md">
+                <h2 className="text-lg font-semibold mb-4">Description</h2>
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Internship Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Describe the internship in detail..."
+                          className="h-32"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Responsibilities */}
+              <div className="bg-gray-50 p-4 rounded-md">
+                <h2 className="text-lg font-semibold mb-4">
+                  Responsibilities
+                </h2>
+                {form.watch("responsibilities").map((_, index) => (
+                  <div key={index} className="flex items-center gap-2 mb-2">
                     <FormField
                       control={form.control}
-                      name="description"
+                      name={`responsibilities.${index}`}
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description*</FormLabel>
+                        <FormItem className="flex-1">
                           <FormControl>
-                            <Textarea
-                              placeholder="Describe the internship, company, and what the intern will learn"
-                              className="min-h-32"
+                            <Input
+                              placeholder={`Responsibility ${index + 1}`}
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription>
-                            Provide a detailed description of the internship opportunity.
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeResponsibility(index)}
+                      disabled={form.watch("responsibilities").length <= 1}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                  
-                  <div className="space-y-4 pt-4 border-t">
-                    <h3 className="text-lg font-semibold">Responsibilities & Requirements</h3>
-                    
-                    <div>
-                      <Label>Responsibilities*</Label>
-                      {responsibilityFields.map((field, index) => (
-                        <div key={field.id} className="flex gap-2 mt-2">
-                          <Input
-                            placeholder={`Responsibility ${index + 1}`}
-                            {...form.register(`responsibilities.${index}`)}
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-2"
+                  onClick={appendResponsibility}
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Add Responsibility
+                </Button>
+              </div>
+
+              {/* Requirements */}
+              <div className="bg-gray-50 p-4 rounded-md">
+                <h2 className="text-lg font-semibold mb-4">Requirements</h2>
+                {form.watch("requirements").map((_, index) => (
+                  <div key={index} className="flex items-center gap-2 mb-2">
+                    <FormField
+                      control={form.control}
+                      name={`requirements.${index}`}
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormControl>
+                            <Input
+                              placeholder={`Requirement ${index + 1}`}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeRequirement(index)}
+                      disabled={form.watch("requirements").length <= 1}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-2"
+                  onClick={appendRequirement}
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Add Requirement
+                </Button>
+              </div>
+
+              {/* Location */}
+              <div className="bg-gray-50 p-4 rounded-md">
+                <h2 className="text-lg font-semibold mb-4">Location</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Mumbai" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Maharashtra" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="isRemote"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
                           />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => removeResponsibility(index)}
-                            className="flex-shrink-0"
-                            disabled={responsibilityFields.length === 1}
-                          >
-                            -
-                          </Button>
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>This is a remote internship</FormLabel>
                         </div>
-                      ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => appendResponsibility("")}
-                        className="mt-2"
-                      >
-                        Add Responsibility
-                      </Button>
-                    </div>
-                    
-                    <div>
-                      <Label>Requirements*</Label>
-                      {requirementFields.map((field, index) => (
-                        <div key={field.id} className="flex gap-2 mt-2">
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Details */}
+              <div className="bg-gray-50 p-4 rounded-md">
+                <h2 className="text-lg font-semibold mb-4">
+                  Internship Details
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="stipend"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Stipend (₹ per month)</FormLabel>
+                        <FormControl>
                           <Input
-                            placeholder={`Requirement ${index + 1}`}
-                            {...form.register(`requirements.${index}`)}
+                            type="number"
+                            placeholder="10000"
+                            {...field}
                           />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => removeRequirement(index)}
-                            className="flex-shrink-0"
-                            disabled={requirementFields.length === 1}
-                          >
-                            -
-                          </Button>
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => appendRequirement("")}
-                        className="mt-2"
-                      >
-                        Add Requirement
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4 pt-4 border-t">
-                    <h3 className="text-lg font-semibold">Location & Details</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="location.city"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>City*</FormLabel>
-                            <Select 
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a city" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {indianCities.slice(1).map((city) => (
-                                  <SelectItem key={city} value={city}>
-                                    {city}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="location.state"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>State*</FormLabel>
-                            <Select 
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a state" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {indianStates.slice(1).map((state) => (
-                                  <SelectItem key={state} value={state}>
-                                    {state}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="stipend"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Monthly Stipend (₹)*</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                placeholder="e.g. 10000"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="durationMonths"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Duration (Months)*</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="1"
-                                placeholder="e.g. 3"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="slots"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Number of Positions*</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="1"
-                                placeholder="e.g. 2"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="deadline"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Application Deadline*</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="isRemote"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                              <FormLabel>Remote Internship</FormLabel>
-                              <FormDescription>
-                                Can this internship be done remotely?
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4 pt-4 border-t">
-                    <h3 className="text-lg font-semibold">Skills Required</h3>
-                    
-                    <div>
-                      <Label>Skills*</Label>
-                      {skillFields.map((field, index) => (
-                        <div key={field.id} className="flex gap-2 mt-2">
-                          <Select 
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="durationMonths"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Duration (months)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="12"
+                            placeholder="3"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="deadline"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Application Deadline</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="date"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="slots"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Number of Openings</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="1"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Skills */}
+              <div className="bg-gray-50 p-4 rounded-md">
+                <h2 className="text-lg font-semibold mb-4">Skills Required</h2>
+                {form.watch("skills").map((_, index) => (
+                  <div key={index} className="flex items-center gap-2 mb-2">
+                    <FormField
+                      control={form.control}
+                      name={`skills.${index}`}
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <Select
                             onValueChange={(value) => {
                               form.setValue(`skills.${index}`, value);
                             }}
-                            defaultValue={skillsList[0]}
+                            defaultValue={field.value}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder={`Select skill ${index + 1}`} />
@@ -479,45 +610,42 @@ const PostInternship = () => {
                               ))}
                             </SelectContent>
                           </Select>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => removeSkill(index)}
-                            className="flex-shrink-0"
-                            disabled={skillFields.length === 1}
-                          >
-                            -
-                          </Button>
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => appendSkill(skillsList[0] || "")}
-                        className="mt-2"
-                      >
-                        Add Skill
-                      </Button>
-                    </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeSkill(index)}
+                      disabled={form.watch("skills").length <= 1}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                </div>
-                
-                <div className="flex justify-end gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => navigate('/recruiter')}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit">Post Internship</Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-2"
+                  onClick={appendSkill}
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Add Skill
+                </Button>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Posting..." : "Post Internship"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
       </div>
     </div>
   );

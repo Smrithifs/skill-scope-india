@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -10,17 +11,32 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
-import { Menu } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Menu, LogIn, User } from 'lucide-react';
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const { user, userType, profile, signOut } = useAuth();
 
   const navigation = [
     { name: 'Home', href: '/' },
     { name: 'For Students', href: '/student' },
     { name: 'For Recruiters', href: '/recruiter' },
   ];
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -55,9 +71,41 @@ const Header = () => {
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="outline" asChild>
-              <Link to="/post-internship">Post Internship</Link>
-            </Button>
+            {user ? (
+              <>
+                {userType === 'recruiter' && (
+                  <Button variant="outline" asChild>
+                    <Link to="/post-internship">Post Internship</Link>
+                  </Button>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="rounded-full p-2">
+                      <User className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>
+                      {profile?.full_name || user.email}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate(userType === 'student' ? '/student' : '/recruiter')}>
+                      Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <Button asChild>
+                <Link to="/auth">
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Sign In
+                </Link>
+              </Button>
+            )}
           </div>
 
           {/* Mobile navigation */}
@@ -90,13 +138,34 @@ const Header = () => {
                       {item.name}
                     </Link>
                   ))}
-                  <Link 
-                    to="/post-internship"
-                    onClick={() => setIsOpen(false)}
-                    className="bg-brand-500 text-white rounded-md py-2 px-4 text-center mt-4"
-                  >
-                    Post Internship
-                  </Link>
+                  
+                  {user ? (
+                    <>
+                      {userType === 'recruiter' && (
+                        <Link 
+                          to="/post-internship"
+                          onClick={() => setIsOpen(false)}
+                          className="font-medium py-2 text-gray-600 hover:text-brand-600"
+                        >
+                          Post Internship
+                        </Link>
+                      )}
+                      <button
+                        onClick={handleSignOut}
+                        className="mt-4 w-full bg-gray-100 text-gray-800 rounded-md py-2 px-4 text-center"
+                      >
+                        Sign out
+                      </button>
+                    </>
+                  ) : (
+                    <Link 
+                      to="/auth"
+                      onClick={() => setIsOpen(false)}
+                      className="bg-brand-500 text-white rounded-md py-2 px-4 text-center mt-4"
+                    >
+                      Sign In
+                    </Link>
+                  )}
                 </div>
               </SheetContent>
             </Sheet>
