@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -180,7 +179,6 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
 
       onClose();
     } catch (error) {
-      // Fixed TypeScript error - Properly handle the error message type
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "An error occurred while submitting your application.",
