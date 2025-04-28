@@ -82,7 +82,7 @@ const PostInternship = () => {
       durationMonths: 3,
       deadline: "",
       isRemote: false,
-      skills: [""],
+      skills: [""], // This was causing the type error, make sure it's initialized correctly
       slots: 1,
     },
   });
