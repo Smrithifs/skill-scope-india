@@ -182,7 +182,7 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "An error occurred while submitting your application.",
         variant: "destructive",
       });
     } finally {
