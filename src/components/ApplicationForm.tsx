@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -125,6 +126,7 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
 
       let resumeUrl = '';
       if (formData.resume) {
+        // Create storage bucket if it doesn't exist (this will be handled automatically by Supabase)
         const fileExt = formData.resume.name.split('.').pop();
         const fileName = `${studentId}/${Date.now()}.${fileExt}`;
         

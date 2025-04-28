@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 type UserProfile = {
   id: string;
@@ -19,6 +19,8 @@ type AuthContextType = {
   profile: UserProfile | null;
   userType: 'student' | 'recruiter' | null;
   isLoading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, type: 'student' | 'recruiter', name: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
@@ -116,6 +118,76 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Simplified sign in function - allows any valid email format and password
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+      
+      toast({
+        title: 'Welcome back!',
+        description: 'You have successfully signed in',
+      });
+    } catch (error: any) {
+      // For demo purposes, create account if doesn't exist
+      try {
+        await signUp(email, password, 'student', email.split('@')[0]);
+      } catch (signupError: any) {
+        toast({
+          title: 'Authentication error',
+          description: signupError.message,
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
+  const signUp = async (email: string, password: string, type: 'student' | 'recruiter', name: string) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // Create profile based on user type
+      if (data.user) {
+        if (type === 'student') {
+          await supabase.from('students').insert({
+            user_id: data.user.id,
+            full_name: name,
+            email: email,
+          });
+        } else {
+          await supabase.from('recruiters').insert({
+            user_id: data.user.id,
+            full_name: name,
+            email: email,
+            company: 'Company Name', // Default placeholder
+            position: 'Recruiter',    // Default placeholder
+          });
+        }
+      }
+
+      toast({
+        title: 'Account created!',
+        description: 'Your account has been successfully created',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Registration error',
+        description: error.message,
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
   const refreshProfile = async () => {
     if (user) {
       await fetchProfile(user.id);
@@ -146,6 +218,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     profile,
     userType,
     isLoading,
+    signIn,
+    signUp,
     signOut,
     refreshProfile,
   };
