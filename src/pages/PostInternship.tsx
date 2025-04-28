@@ -82,7 +82,7 @@ const PostInternship = () => {
       durationMonths: 3,
       deadline: "",
       isRemote: false,
-      skills: [""],
+      skills: [skillsList[0] || ""],
       slots: 1,
     },
   });
@@ -494,7 +494,7 @@ const PostInternship = () => {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => appendSkill("")}
+                        onClick={() => appendSkill(skillsList[0] || "")}
                         className="mt-2"
                       >
                         Add Skill
