@@ -1,7 +1,7 @@
-
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
+import { ApplicationForm } from '@/components/ApplicationForm';
 import { 
   Card,
   CardContent,
@@ -39,6 +39,7 @@ const InternshipDetails = () => {
   const { internships } = useData();
   const { toast } = useToast();
   const [coverLetter, setCoverLetter] = useState("");
+  const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   
   // Find the internship by ID
   const internship = internships.find(intern => intern.id === id);
@@ -84,12 +85,13 @@ const InternshipDetails = () => {
   
   const daysLeft = getDaysLeft(internship.deadline);
   
-  // Handle application submission
-  const handleApply = () => {
-    toast({
-      title: "Application Submitted!",
-      description: "Your application has been sent to the recruiter.",
-    });
+  // Handle dialog open/close
+  const openApplicationModal = () => {
+    setIsApplicationModalOpen(true);
+  };
+  
+  const closeApplicationModal = () => {
+    setIsApplicationModalOpen(false);
   };
   
   return (
@@ -237,40 +239,13 @@ const InternshipDetails = () => {
                 </div>
               </CardContent>
               <CardFooter>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button className="w-full" disabled={daysLeft <= 0}>
-                      {daysLeft > 0 ? "Apply Now" : "Applications Closed"}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Apply for {internship.title}</DialogTitle>
-                      <DialogDescription>
-                        Submit your application for this internship at {internship.company}.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Cover Letter (Optional)
-                        </label>
-                        <Textarea
-                          placeholder="Tell the recruiter why you're interested in this role and why you'd be a good fit."
-                          value={coverLetter}
-                          onChange={(e) => setCoverLetter(e.target.value)}
-                          className="h-36"
-                        />
-                      </div>
-                      <p className="text-sm text-gray-500">
-                        Your resume and profile information will be shared with the recruiter.
-                      </p>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit" onClick={handleApply}>Submit Application</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                <Button
+                  className="w-full"
+                  disabled={daysLeft <= 0}
+                  onClick={openApplicationModal}
+                >
+                  {daysLeft > 0 ? "Apply Now" : "Applications Closed"}
+                </Button>
               </CardFooter>
             </Card>
             
@@ -334,6 +309,15 @@ const InternshipDetails = () => {
           </div>
         </div>
       </div>
+
+      {/* Application Form */}
+      {id && (
+        <ApplicationForm 
+          internshipId={id} 
+          isOpen={isApplicationModalOpen} 
+          onClose={closeApplicationModal} 
+        />
+      )}
     </div>
   );
 };

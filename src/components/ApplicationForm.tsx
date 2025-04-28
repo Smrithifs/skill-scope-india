@@ -178,7 +178,7 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
       });
 
       onClose();
-    } catch (error: unknown) {
+    } catch (error) {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "An error occurred while submitting your application.",
