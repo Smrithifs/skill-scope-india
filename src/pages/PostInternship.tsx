@@ -82,7 +82,7 @@ const PostInternship = () => {
       durationMonths: 3,
       deadline: "",
       isRemote: false,
-      skills: [""], // This was causing the type error, make sure it's initialized correctly
+      skills: [""],
       slots: 1,
     },
   });
@@ -466,7 +466,6 @@ const PostInternship = () => {
                             onValueChange={(value) => {
                               form.setValue(`skills.${index}`, value);
                             }}
-                            defaultValue=""
                           >
                             <SelectTrigger>
                               <SelectValue placeholder={`Select skill ${index + 1}`} />
