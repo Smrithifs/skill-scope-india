@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,7 +37,6 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
     resume: null as File | null,
   });
 
-  // Prefill form with user data if available
   useEffect(() => {
     if (profile && userType === 'student') {
       setFormData(prev => ({
@@ -68,7 +66,6 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
     setIsSubmitting(true);
 
     try {
-      // Check if user is authenticated
       if (!user) {
         toast({
           title: "Authentication required",
@@ -80,7 +77,6 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
         return;
       }
 
-      // Check if user is a student
       if (userType !== 'student') {
         toast({
           title: "Student account required",
@@ -92,7 +88,6 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
 
       let studentId = profile?.id;
 
-      // If student profile doesn't exist, create one
       if (!studentId) {
         const { data, error } = await supabase
           .from('students')
@@ -112,7 +107,6 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
         }
         studentId = data.id;
       } else {
-        // Update student profile
         const { error } = await supabase
           .from('students')
           .update({
@@ -129,7 +123,6 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
         }
       }
 
-      // Upload resume if provided
       let resumeUrl = '';
       if (formData.resume) {
         const fileExt = formData.resume.name.split('.').pop();
@@ -145,7 +138,6 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
         resumeUrl = fileName;
       }
 
-      // Create application
       const { data: internship } = await supabase
         .from('internships')
         .select('recruiter_id')
@@ -172,7 +164,6 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
         throw new Error(applicationError.message);
       }
 
-      // Update internship applications count
       const { error: updateError } = await supabase.rpc('increment_applications_count', {
         internship_id: internshipId
       });
@@ -190,7 +181,9 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
     } catch (error: any) {
       toast({
         title: "Error",
-        description: typeof error?.message === 'string' ? error.message : "An error occurred while submitting your application.",
+        description: error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+          ? error.message
+          : "An error occurred while submitting your application.",
         variant: "destructive",
       });
     } finally {
@@ -198,7 +191,6 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
     }
   };
 
-  // Redirect to auth if not logged in
   useEffect(() => {
     if (isOpen && !user) {
       toast({
