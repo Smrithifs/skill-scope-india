@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '@/contexts/DataContext';
@@ -466,6 +467,7 @@ const PostInternship = () => {
                             onValueChange={(value) => {
                               form.setValue(`skills.${index}`, value);
                             }}
+                            defaultValue={form.getValues(`skills.${index}`)}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder={`Select skill ${index + 1}`} />
