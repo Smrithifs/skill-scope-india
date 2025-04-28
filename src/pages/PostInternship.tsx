@@ -466,7 +466,7 @@ const PostInternship = () => {
                             onValueChange={(value) => {
                               form.setValue(`skills.${index}`, value);
                             }}
-                            defaultValue={form.getValues(`skills.${index}`)}
+                            defaultValue={form.getValues(`skills.${index}`) || ""}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder={`Select skill ${index + 1}`} />
@@ -495,7 +495,7 @@ const PostInternship = () => {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => appendSkill("")}
+                        onClick={() => appendSkill(skillsList[0] || "")}
                         className="mt-2"
                       >
                         Add Skill
