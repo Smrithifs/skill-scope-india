@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -179,12 +178,10 @@ export function ApplicationForm({ internshipId, isOpen, onClose }: ApplicationFo
       });
 
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: typeof error === 'object' && error !== null && 'message' in error 
-          ? String(error.message) 
-          : "An error occurred while submitting your application.",
+        description: error instanceof Error ? error.message : "An error occurred while submitting your application.",
         variant: "destructive",
       });
     } finally {
